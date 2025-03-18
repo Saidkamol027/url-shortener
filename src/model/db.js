@@ -1,8 +1,8 @@
-const pool = require("../config/db.config");
+const pool = require('../config/db.config')
 
 async function createTables() {
-  try {
-    await pool.query(`
+	try {
+		await pool.query(`
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
@@ -21,12 +21,12 @@ async function createTables() {
                 ON DELETE CASCADE 
                 ON UPDATE NO ACTION
             );
-            `);
+            `)
 
-    return "Database'da jadvallar yaratildi ✅";
-  } catch (err) {
-    throw new Error("Jadval yaratishda xatolik⚠️");
-  }
+		return "Database'da jadvallar yaratildi ✅"
+	} catch (err) {
+		throw new Error('Jadval yaratishda xatolik⚠️')
+	}
 }
 
-module.exports = createTables;
+module.exports = createTables

@@ -1,57 +1,40 @@
-const { nanoid } = require('nanoid')
+const nanoid = require('nanoid')
+const { SERVER_BASE_URL } = require('../config/url.config')
 const pool = require('../config/db.config')
 
 exports.getAllUrls = async (_, res) => {
-	try {
-		const urls = await pool.query('SELECT * FROM urls')
-		res.status(200).json({ message: 'Fayldagi ma’lumotlar', data: urls.rows })
-	} catch (error) {
-		res.status(500).json({ message: 'Xatolik yuz berdi', error })
-	}
+	const allUrls = await pool.query(`SELECT * FROM urls`)
+
+	res.send({
+		message: 'Success ✅',
+		count: allUrls.rowCount,
+		data: allUrls.rows,
+	})
 }
 
 exports.generateUrl = async (req, res) => {
-	try {
-		const { originalUrl, userId } = req.body
-		const urls = await pool.query('SELECT * FROM urls')
+	const { originalUrl, userId } = req.body
 
-		const foundedUrl = urls.rows.find(url => url.originalUrl == originalUrl)
+	const foundedUrl = await pool.query(
+		`SELECT * FROM urls WHERE original_url = $1 AND user_id = $2`,
+		[originalUrl, userId]
+	)
 
-		if (foundedUrl) {
-			return res.status(409).send({
-				message: `Bu URL: ${originalUrl} allaqachon foydalanilgan`,
-			})
-		}
-
-		let code = nanoid(8)
-
-		await pool.query(
-			'INSERT INTO urls (originalUrl, code, userId, createdAt, viewersCount) VALUES ($1, $2, $3, $4, $5)',
-			[originalUrl, code, userId, new Date(), 0]
-		)
-
-		res.send({
-			message: 'ok',
-			shortUrl: process.env.SERVER_BASE_URL + 'route/' + code,
+	if (foundedUrl.rowCount) {
+		return res.status(409).send({
+			message: `Bu URLdan: ${originalUrl} allaqachon foydalangansiz`,
 		})
-	} catch (error) {
-		res.status(500).json({ message: 'Xatolik yuz berdi', error })
 	}
-}
 
-exports.deleteUrl = async (req, res) => {
-	try {
-		const { id } = req.params
-		const url = await pool.query('DELETE FROM urls WHERE id = $1 RETURNING *', [
-			id,
-		])
+	let code = nanoid.nanoid(8)
 
-		if (url.rows.length === 0) {
-			return res.status(404).json({ message: "Bunday 'id'lik url yo'q" })
-		}
+	const newUrl = await pool.query(
+		`INSERT INTO urls (original_url, code, user_id) VALUES ($1, $2, $3) RETURNING *`,
+		[originalUrl, code, userId]
+	)
 
-		res.status(200).json({ message: "Url o'chirib tashlandi", deleteUrl: url })
-	} catch (error) {
-		res.status(500).json({ error: 'Server bilan hatolik' })
-	}
+	res.send({
+		message: 'ok',
+		shortUrl: SERVER_BASE_URL + 'route/' + newUrl.rows[0].code,
+	})
 }
